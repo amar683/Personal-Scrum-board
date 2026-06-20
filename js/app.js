@@ -13,8 +13,8 @@ const App = (() => {
     // Wait for auth state to initialize the app
     Auth.onAuthStateChanged((user) => {
       if (user) {
-        // Initialize store with user's UID
-        Store.init(user.uid);
+        // Initialize store with user
+        Store.init(user);
         Modals.init();
         bindEvents();
       } else {

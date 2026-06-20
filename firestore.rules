@@ -1,10 +1,21 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Each user can only read/write their own data
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    // Projects
+    match /projects/{projectId} {
+      // Anyone authenticated can create a project
+      allow create: if request.auth != null;
+      // You can read/edit if your email is in the members list
+      allow read, update: if request.auth != null && request.auth.token.email in resource.data.members;
+      // Only the owner can delete the project
+      allow delete: if request.auth != null && request.auth.uid == resource.data.ownerId;
+      
+      // Work Items inside the project
+      match /items/{itemId} {
+        // You can read/write items if you are a member of the parent project
+        allow read, write: if request.auth != null && 
+          request.auth.token.email in get(/databases/$(database)/documents/projects/$(projectId)).data.members;
+      }
     }
 
     // Deny everything else

@@ -15,21 +15,29 @@ const Auth = (() => {
   }
 
   function init() {
-    // Listen for auth state changes
-    auth.onAuthStateChanged((user) => {
-      currentUser = user;
+    // Explicitly set persistence
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+      .then(() => {
+        // Listen for auth state changes
+        auth.onAuthStateChanged((user) => {
+          document.getElementById('login-screen').classList.remove('loading');
+          currentUser = user;
 
-      if (user) {
-        // User is signed in
-        showApp();
-        updateUserUI(user);
-      } else {
-        // User is signed out
-        showLogin();
-      }
+          if (user) {
+            // User is signed in
+            showApp();
+            updateUserUI(user);
+          } else {
+            // User is signed out
+            showLogin();
+          }
 
-      notifyListeners(user);
-    });
+          notifyListeners(user);
+        });
+      })
+      .catch((error) => {
+        console.error("Auth persistence error:", error);
+      });
 
     // Sign-in button
     document.getElementById('btn-google-signin').addEventListener('click', signIn);

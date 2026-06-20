@@ -8,7 +8,7 @@
 
 const Store = (() => {
   const listeners = new Map();
-  let currentUid = null;
+  let currentUser = null;
   let unsubscribeProjects = null;
   let unsubscribeItems = null;
 
@@ -32,8 +32,8 @@ const Store = (() => {
   }
 
   function userProjectsRef() {
-    if (!currentUid) throw new Error('Not authenticated');
-    return db.collection('users').doc(currentUid).collection('projects');
+    if (!currentUser) throw new Error('Not authenticated');
+    return db.collection('projects');
   }
 
   function projectItemsRef(projectId) {
@@ -58,20 +58,25 @@ const Store = (() => {
   }
 
   // ── Init / Cleanup ──
-  function init(uid) {
+  function init(user) {
     cleanup();
-    currentUid = uid;
+    currentUser = user;
     projectsCache = [];
     itemsCache.clear();
 
-    // Listen to projects in real-time
+    // Listen to projects in real-time where user is a member
     unsubscribeProjects = userProjectsRef()
-      .orderBy('createdAt', 'asc')
+      .where('members', 'array-contains', user.email)
       .onSnapshot((snapshot) => {
-        projectsCache = snapshot.docs.map(doc => ({
+        let projects = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
+
+        // Sort locally since Firestore requires a composite index to order by a different field after an array-contains query
+        projects.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
+
+        projectsCache = projects;
 
         // Also load items for each project into cache
         projectsCache.forEach(project => {
@@ -126,6 +131,7 @@ const Store = (() => {
     itemsCache.clear();
 
     currentUid = null;
+    currentUser = null;
     projectsCache = [];
   }
 
@@ -149,6 +155,8 @@ const Store = (() => {
       description: description.trim(),
       color: color || PROJECT_COLORS[projectsCache.length % PROJECT_COLORS.length],
       columns: [...DEFAULT_COLUMNS],
+      ownerId: currentUser.uid,
+      members: [currentUser.email],
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
@@ -190,6 +198,16 @@ const Store = (() => {
     } catch (error) {
       console.error('Delete project error:', error);
       throw error;
+    }
+  }
+
+  async function addMemberToProject(projectId, email) {
+    try {
+      await userProjectsRef().doc(projectId).update({
+        members: firebase.firestore.FieldValue.arrayUnion(email)
+      });
+    } catch (error) {
+      console.error('Add member error:', error);
     }
   }
 
@@ -294,6 +312,7 @@ const Store = (() => {
     createProject,
     updateProject,
     deleteProject,
+    addMemberToProject,
     getItems,
     getItem,
     addItem,

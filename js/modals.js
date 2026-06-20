@@ -213,6 +213,7 @@ const Modals = (() => {
           const oldAssignee = oldItem?.assignee;
           if (!oldAssignee || oldAssignee.email !== itemData.assignee.email) {
             const project = Store.getProject(projectId);
+            Store.addMemberToProject(projectId, itemData.assignee.email);
             Notifications.sendAssignmentEmail(itemData.assignee, updatedItem, project.name);
           }
         }
@@ -223,6 +224,7 @@ const Modals = (() => {
         // Send email if assignee has email
         if (itemData.assignee && itemData.assignee.email) {
           const project = Store.getProject(projectId);
+          Store.addMemberToProject(projectId, itemData.assignee.email);
           Notifications.sendAssignmentEmail(itemData.assignee, item, project.name);
         }
         Notifications.showToast(`${TYPE_ICONS[itemData.type]} ${title} created`, 'success');

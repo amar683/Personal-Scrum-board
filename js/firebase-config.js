@@ -11,12 +11,12 @@
 // 6. Replace the placeholder values with your actual config
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCUhVaQyY2JSnceJj0gRGZ2RkuXUcXF4jY",
+  authDomain: "scrum-board-101e3.firebaseapp.com",
+  projectId: "scrum-board-101e3",
+  storageBucket: "scrum-board-101e3.firebasestorage.app",
+  messagingSenderId: "555351123743",
+  appId: "1:555351123743:web:1263aa30f6146b99f9322a"
 };
 
 // Initialize Firebase

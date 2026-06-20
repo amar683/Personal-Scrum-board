@@ -4,27 +4,48 @@
 
 const Projects = (() => {
   function render() {
-    const container = document.getElementById('projects-view');
+    const container = document.getElementById('main-content');
     const projects = Store.getProjects();
+    const uid = Auth.getUid();
 
-    container.innerHTML = `
+    const myProjects = projects.filter(p => p.ownerId === uid);
+    const sharedProjects = projects.filter(p => p.ownerId !== uid);
+
+    let html = `
       <div class="projects-view__header">
         <div>
-          <h1 class="projects-view__title">Your Projects</h1>
-          <p class="projects-view__subtitle">${projects.length} project${projects.length !== 1 ? 's' : ''}</p>
+          <h1 class="projects-view__title">Projects</h1>
+          <p class="projects-view__subtitle">${projects.length} total project${projects.length !== 1 ? 's' : ''}</p>
         </div>
         <button class="btn btn--primary" id="btn-new-project-header" onclick="Modals.openProjectModal()">
           <span class="btn__icon">+</span> New Project
         </button>
       </div>
-      <div class="projects-grid" id="projects-grid">
-        ${projects.map(project => renderProjectCard(project)).join('')}
-        <div class="project-card project-card--new" id="card-new-project" onclick="Modals.openProjectModal()">
-          <div class="project-card--new__icon">+</div>
-          <span class="project-card--new__text">New Project</span>
+      
+      <div class="projects-section">
+        <h2 class="projects-section__title" style="margin-bottom: 16px; font-size: 1.25rem; font-weight: 500;">My Projects</h2>
+        <div class="projects-grid">
+          ${myProjects.map(project => renderProjectCard(project, true)).join('')}
+          <div class="project-card project-card--new" id="card-new-project" onclick="Modals.openProjectModal()">
+            <div class="project-card--new__icon">+</div>
+            <span class="project-card--new__text">New Project</span>
+          </div>
         </div>
       </div>
     `;
+
+    if (sharedProjects.length > 0) {
+      html += `
+        <div class="projects-section" style="margin-top: 40px;">
+          <h2 class="projects-section__title" style="margin-bottom: 16px; font-size: 1.25rem; font-weight: 500;">Shared with Me</h2>
+          <div class="projects-grid">
+            ${sharedProjects.map(project => renderProjectCard(project, false)).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    container.innerHTML = html;
 
     // Bind card clicks
     container.querySelectorAll('.project-card[data-project-id]').forEach(card => {
@@ -55,7 +76,7 @@ const Projects = (() => {
     });
   }
 
-  function renderProjectCard(project) {
+  function renderProjectCard(project, isOwner) {
     const items = Store.getItems(project.id);
     const featureCount = items.filter(i => i.type === 'feature').length;
     const bugCount = items.filter(i => i.type === 'bug').length;
@@ -63,10 +84,12 @@ const Projects = (() => {
 
     return `
       <div class="project-card animate-in" data-project-id="${project.id}" style="--project-color: ${project.color}">
+        ${isOwner ? `
         <div class="project-card__actions">
           <button class="icon-btn project-card__action-btn project-card__action-btn--edit" data-project-id="${project.id}" data-tooltip="Edit">✏️</button>
           <button class="icon-btn icon-btn--danger project-card__action-btn project-card__action-btn--delete" data-project-id="${project.id}" data-tooltip="Delete">🗑️</button>
         </div>
+        ` : ''}
         <h3 class="project-card__name">${escapeHtml(project.name)}</h3>
         <p class="project-card__desc">${escapeHtml(project.description) || 'No description'}</p>
         <div class="project-card__stats">
