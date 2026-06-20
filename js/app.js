@@ -41,6 +41,12 @@ const App = (() => {
       renderSidebar(); // Update item counts
     });
 
+    Store.on('sprints:changed', ({ projectId }) => {
+      if (currentView === 'board' && currentProjectId === projectId) {
+        Board.render(projectId);
+      }
+    });
+
     // Sidebar toggle
     const toggleBtn = document.getElementById('btn-toggle-sidebar');
     toggleBtn.removeEventListener('click', toggleSidebar);

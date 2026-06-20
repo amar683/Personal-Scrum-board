@@ -145,6 +145,20 @@ const Modals = (() => {
     form.dataset.projectId = projectId;
     form.dataset.itemId = item?.id || '';
 
+    // Populate sprint dropdown
+    const sprints = Store.getSprints(projectId);
+    const sprintSelect = form.elements['item-sprint'];
+    sprintSelect.innerHTML = '<option value="">📥 Backlog (No Sprint)</option>';
+    sprints.forEach(sprint => {
+      const option = document.createElement('option');
+      option.value = sprint.id;
+      option.textContent = `📅 ${sprint.name}`;
+      sprintSelect.appendChild(option);
+    });
+    // Default to the currently viewed sprint on the board (if not editing an item with a different sprint)
+    const activeSprintId = Board.getCurrentSprintId ? Board.getCurrentSprintId() : null;
+    sprintSelect.value = item ? (item.sprintId || '') : (activeSprintId || '');
+
     // Type selector
     const typeSelector = form.querySelector('.type-selector');
     const selectedType = item?.type || 'task';
@@ -192,6 +206,7 @@ const Modals = (() => {
       type: selectedType?.dataset.type || 'task',
       priority: form.elements['item-priority'].value,
       column: form.elements['item-column'].value,
+      sprintId: form.elements['item-sprint'].value || null,
     };
 
     // Handle assignee
@@ -254,6 +269,84 @@ const Modals = (() => {
     open('modal-confirm');
   }
 
+  // ── Manage Sprints Modal ──
+  function openManageSprintsModal(projectId) {
+    const modal = document.getElementById('modal-sprints');
+    const form = document.getElementById('sprint-form');
+    form.dataset.projectId = projectId;
+    
+    // Reset form
+    form.reset();
+    
+    renderSprintsList(projectId);
+    open('modal-sprints');
+  }
+
+  function renderSprintsList(projectId) {
+    const listEl = document.getElementById('sprints-list');
+    const sprints = Store.getSprints(projectId);
+    
+    listEl.innerHTML = '';
+    
+    sprints.forEach(sprint => {
+      const start = sprint.startDate ? new Date(sprint.startDate).toLocaleDateString() : 'No start';
+      const end = sprint.endDate ? new Date(sprint.endDate).toLocaleDateString() : 'No end';
+      
+      const itemEl = document.createElement('div');
+      itemEl.className = 'sprint-item';
+      itemEl.innerHTML = `
+        <div class="sprint-item__info">
+          <span class="sprint-item__name">${escapeHtml(sprint.name)}</span>
+          <span class="sprint-item__dates">${start} — ${end}</span>
+        </div>
+        <button class="icon-btn icon-btn--danger" data-tooltip="Delete Sprint" onclick="Modals.deleteSprint('${projectId}', '${sprint.id}')">🗑️</button>
+      `;
+      listEl.appendChild(itemEl);
+    });
+  }
+
+  async function handleSprintSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const projectId = form.dataset.projectId;
+    
+    const name = form.elements['sprint-name'].value.trim();
+    const startDate = form.elements['sprint-start'].value;
+    const endDate = form.elements['sprint-end'].value;
+    
+    if (!name) return;
+    
+    try {
+      await Store.createSprint(projectId, { name, startDate, endDate });
+      Notifications.showToast(`Sprint "${name}" created`, 'success');
+      form.reset();
+      renderSprintsList(projectId);
+    } catch (error) {
+      Notifications.showToast('Failed to create sprint', 'error');
+    }
+  }
+
+  function deleteSprint(projectId, sprintId) {
+    openConfirmModal('Delete this sprint? Items inside will be moved to the Backlog.', async () => {
+      try {
+        await Store.deleteSprint(projectId, sprintId);
+        Notifications.showToast('Sprint deleted', 'info');
+        if (activeModal === 'modal-sprints') {
+          renderSprintsList(projectId);
+        }
+      } catch (error) {
+        Notifications.showToast('Failed to delete sprint', 'error');
+      }
+    });
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
   // ── Init ──
   function init() {
     // Project form
@@ -261,6 +354,9 @@ const Modals = (() => {
 
     // Item form
     document.getElementById('item-form').addEventListener('submit', handleItemSubmit);
+
+    // Sprint form
+    document.getElementById('sprint-form').addEventListener('submit', handleSprintSubmit);
 
     // Color picker clicks
     document.querySelector('#modal-project .color-picker').addEventListener('click', (e) => {
@@ -327,7 +423,9 @@ const Modals = (() => {
     close,
     openProjectModal,
     openItemModal,
+    openManageSprintsModal,
     openConfirmModal,
+    deleteSprint,
     getInitials,
     getAvatarColor,
     TYPE_ICONS

@@ -169,6 +169,15 @@
       </div>
       <form id="item-form">
         <div class="modal__body">
+          <!-- Sprint Selector -->
+          <div class="form-group">
+            <label class="form-label" for="item-sprint">Sprint</label>
+            <select class="form-select" id="item-sprint" name="item-sprint">
+              <option value="">📥 Backlog (No Sprint)</option>
+              <!-- Sprints will be injected here via JS -->
+            </select>
+          </div>
+
           <!-- Type Selector -->
           <div class="form-group">
             <label class="form-label">Type</label>
@@ -241,6 +250,42 @@
           <button type="submit" class="btn btn--primary">Save Item</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ── Manage Sprints Modal ── -->
+  <div class="modal-overlay" id="modal-sprints">
+    <div class="modal">
+      <div class="modal__header">
+        <h2 class="modal__title">
+          <span class="modal__title-icon">⚙️</span> Manage Sprints
+        </h2>
+        <button class="modal__close" data-close-modal>✕</button>
+      </div>
+      <div class="modal__body">
+        <div class="sprints-list" id="sprints-list">
+          <!-- Rendered by JS -->
+        </div>
+
+        <form id="sprint-form" class="sprint-form">
+          <h3 class="sprint-form__title">Create New Sprint</h3>
+          <div class="form-group">
+            <label class="form-label form-label--required" for="sprint-name">Sprint Name</label>
+            <input type="text" class="form-input" id="sprint-name" placeholder="e.g. Sprint 1" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="sprint-start">Start Date</label>
+              <input type="date" class="form-input" id="sprint-start">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="sprint-end">End Date</label>
+              <input type="date" class="form-input" id="sprint-end">
+            </div>
+          </div>
+          <button type="submit" class="btn btn--secondary btn--full" style="margin-top: 12px;">Add Sprint</button>
+        </form>
+      </div>
     </div>
   </div>
 

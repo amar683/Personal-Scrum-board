@@ -15,6 +15,7 @@ const Store = (() => {
   // Local cache for fast access
   let projectsCache = [];
   let itemsCache = new Map(); // projectId -> items[]
+  let sprintsCache = new Map(); // projectId -> sprints[]
 
   // ── Default Project Colors ──
   const PROJECT_COLORS = [
@@ -40,6 +41,10 @@ const Store = (() => {
     return userProjectsRef().doc(projectId).collection('items');
   }
 
+  function projectSprintsRef(projectId) {
+    return userProjectsRef().doc(projectId).collection('sprints');
+  }
+
   // ── Event System ──
   function on(event, callback) {
     if (!listeners.has(event)) listeners.set(event, []);
@@ -63,6 +68,7 @@ const Store = (() => {
     currentUser = user;
     projectsCache = [];
     itemsCache.clear();
+    sprintsCache.clear();
 
     // Listen to projects in real-time where user is a member
     unsubscribeProjects = userProjectsRef()
@@ -78,9 +84,10 @@ const Store = (() => {
 
         projectsCache = projects;
 
-        // Also load items for each project into cache
+        // Also load items and sprints for each project into cache
         projectsCache.forEach(project => {
           listenToItems(project.id);
+          listenToSprints(project.id);
         });
 
         emit('projects:changed', projectsCache);
@@ -118,6 +125,35 @@ const Store = (() => {
     }
   }
 
+  function listenToSprints(projectId) {
+    // Avoid duplicate listeners
+    if (sprintsCache.has(projectId) && sprintsCache.get(projectId).__unsub) return;
+
+    const unsub = projectSprintsRef(projectId)
+      .orderBy('createdAt', 'asc')
+      .onSnapshot((snapshot) => {
+        const sprints = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        // Store unsubscribe reference
+        sprints.__unsub = unsub;
+        sprintsCache.set(projectId, sprints);
+
+        emit('sprints:changed', { projectId, sprints });
+      }, (error) => {
+        console.error(`Sprints listener error for ${projectId}:`, error);
+      });
+
+    // Initialize with unsub reference
+    if (!sprintsCache.has(projectId)) {
+      const arr = [];
+      arr.__unsub = unsub;
+      sprintsCache.set(projectId, arr);
+    }
+  }
+
   function cleanup() {
     if (unsubscribeProjects) {
       unsubscribeProjects();
@@ -129,6 +165,12 @@ const Store = (() => {
       if (items.__unsub) items.__unsub();
     });
     itemsCache.clear();
+
+    // Unsubscribe from all sprint listeners
+    sprintsCache.forEach((sprints) => {
+      if (sprints.__unsub) sprints.__unsub();
+    });
+    sprintsCache.clear();
 
     currentUid = null;
     currentUser = null;
@@ -184,17 +226,24 @@ const Store = (() => {
 
   async function deleteProject(id) {
     try {
-      // Delete all items in the project first
+      // Delete all items and sprints in the project first
       const items = await projectItemsRef(id).get();
+      const sprints = await projectSprintsRef(id).get();
       const batch = db.batch();
       items.docs.forEach(doc => batch.delete(doc.ref));
+      sprints.docs.forEach(doc => batch.delete(doc.ref));
       batch.delete(userProjectsRef().doc(id));
       await batch.commit();
 
       // Cleanup item listener
-      const cached = itemsCache.get(id);
-      if (cached && cached.__unsub) cached.__unsub();
+      const cachedItems = itemsCache.get(id);
+      if (cachedItems && cachedItems.__unsub) cachedItems.__unsub();
       itemsCache.delete(id);
+
+      // Cleanup sprint listener
+      const cachedSprints = sprintsCache.get(id);
+      if (cachedSprints && cachedSprints.__unsub) cachedSprints.__unsub();
+      sprintsCache.delete(id);
     } catch (error) {
       console.error('Delete project error:', error);
       throw error;
@@ -221,7 +270,47 @@ const Store = (() => {
     return items.find(i => i.id === itemId) || null;
   }
 
-  async function addItem(projectId, { title, description = '', type = 'task', priority = 'medium', column = 'New', assignee = null, tags = [] }) {
+  // ── Sprints CRUD ──
+  function getSprints(projectId) {
+    return sprintsCache.get(projectId) || [];
+  }
+
+  async function createSprint(projectId, { name, startDate, endDate }) {
+    const sprintData = {
+      name: name.trim(),
+      startDate: startDate || null,
+      endDate: endDate || null,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try {
+      const docRef = await projectSprintsRef(projectId).add(sprintData);
+      return { id: docRef.id, ...sprintData };
+    } catch (error) {
+      console.error('Create sprint error:', error);
+      throw error;
+    }
+  }
+
+  async function deleteSprint(projectId, sprintId) {
+    try {
+      // Get items in sprint and move them to backlog
+      const items = await projectItemsRef(projectId).where('sprintId', '==', sprintId).get();
+      const batch = db.batch();
+      
+      items.docs.forEach(doc => {
+        batch.update(doc.ref, { sprintId: null, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      });
+      
+      batch.delete(projectSprintsRef(projectId).doc(sprintId));
+      await batch.commit();
+    } catch (error) {
+      console.error('Delete sprint error:', error);
+      throw error;
+    }
+  }
+
+  async function addItem(projectId, { title, description = '', type = 'task', priority = 'medium', column = 'New', assignee = null, tags = [], sprintId = null }) {
     // Generate a human-readable ID
     const existingItems = getItems(projectId);
     const maxNum = existingItems.reduce((max, item) => {
@@ -238,6 +327,7 @@ const Store = (() => {
       type,
       priority,
       column,
+      sprintId: sprintId || null,
       assignee: assignee ? { name: assignee.name, email: assignee.email || '' } : null,
       tags,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -315,6 +405,9 @@ const Store = (() => {
     addMemberToProject,
     getItems,
     getItem,
+    getSprints,
+    createSprint,
+    deleteSprint,
     addItem,
     updateItem,
     moveItem,

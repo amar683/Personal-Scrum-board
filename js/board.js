@@ -4,6 +4,7 @@
 
 const Board = (() => {
   let currentProjectId = null;
+  let currentSprintId = null; // null means Backlog
   let activeFilters = { type: null, priority: null };
   let draggedCard = null;
   let draggedItemId = null;
@@ -25,15 +26,22 @@ const Board = (() => {
   };
 
   function render(projectId) {
-    currentProjectId = projectId;
+    if (currentProjectId !== projectId) {
+      currentProjectId = projectId;
+      determineActiveSprint(projectId);
+    }
+    
     const project = Store.getProject(projectId);
     if (!project) return;
 
     const mainContent = document.getElementById('main-content');
     const items = Store.getItems(projectId);
+    const sprints = Store.getSprints(projectId);
 
-    // Apply filters
-    let filteredItems = items;
+    // Apply Sprint filter
+    let filteredItems = items.filter(i => (i.sprintId || null) === currentSprintId);
+
+    // Apply other filters
     if (activeFilters.type) {
       filteredItems = filteredItems.filter(i => i.type === activeFilters.type);
     }
@@ -43,7 +51,16 @@ const Board = (() => {
 
     mainContent.innerHTML = `
       <div class="board-header">
-        <div class="board-header__filters">
+        <div class="board-header__sprints" style="display: flex; gap: 12px; align-items: center; margin-right: auto;">
+          <select class="form-select" id="board-sprint-select" onchange="Board.setSprint(this.value)" style="width: auto; min-width: 200px; padding: 6px 32px 6px 12px; border-radius: 6px; font-weight: 500;">
+            <option value="">📥 Backlog</option>
+            ${sprints.map(s => `<option value="${s.id}" ${s.id === currentSprintId ? 'selected' : ''}>📅 ${escapeHtml(s.name)}</option>`).join('')}
+          </select>
+          <button class="btn btn--secondary btn--sm" onclick="Modals.openManageSprintsModal('${projectId}')">
+            ⚙️ Manage Sprints
+          </button>
+        </div>
+        <div class="board-header__filters" style="margin-left: auto;">
           <button class="board-header__filter ${!activeFilters.type ? 'active' : ''}" data-filter-type="" onclick="Board.setFilter('type', null)">All</button>
           <button class="board-header__filter ${activeFilters.type === 'feature' ? 'active' : ''}" data-filter-type="feature" onclick="Board.setFilter('type', 'feature')">💎 Features</button>
           <button class="board-header__filter ${activeFilters.type === 'bug' ? 'active' : ''}" data-filter-type="bug" onclick="Board.setFilter('type', 'bug')">🐛 Bugs</button>
@@ -222,7 +239,30 @@ const Board = (() => {
     }
   }
 
-  // ── Filters ──
+  // ── Filters & Sprints ──
+  function determineActiveSprint(projectId) {
+    const sprints = Store.getSprints(projectId);
+    if (!sprints || sprints.length === 0) {
+      currentSprintId = null;
+      return;
+    }
+
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // Find active sprint
+    const active = sprints.find(s => s.startDate && s.endDate && s.startDate <= today && s.endDate >= today);
+    if (active) {
+      currentSprintId = active.id;
+    } else {
+      currentSprintId = null;
+    }
+  }
+
+  function setSprint(sprintId) {
+    currentSprintId = sprintId || null;
+    if (currentProjectId) render(currentProjectId);
+  }
+
   function setFilter(filterType, value) {
     activeFilters[filterType] = value;
     if (currentProjectId) render(currentProjectId);
@@ -243,6 +283,8 @@ const Board = (() => {
   return {
     render,
     setFilter,
-    getCurrentProjectId: () => currentProjectId
+    setSprint,
+    getCurrentProjectId: () => currentProjectId,
+    getCurrentSprintId: () => currentSprintId
   };
 })();
