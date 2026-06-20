@@ -1,0 +1,49 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Generate Firebase Config
+        run: |
+          mkdir -p js
+          echo "const firebaseConfig = ${{ secrets.FIREBASE_CONFIG }};" > js/firebase-config.js
+          echo "// Initialize Firebase" >> js/firebase-config.js
+          echo "const app = firebase.initializeApp(firebaseConfig);" >> js/firebase-config.js
+          echo "const auth = firebase.auth();" >> js/firebase-config.js
+          echo "const db = firebase.firestore();" >> js/firebase-config.js
+          echo "db.enablePersistence({ synchronizeTabs: true }).catch(err => console.error('Persistence error:', err));" >> js/firebase-config.js
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
