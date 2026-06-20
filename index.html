@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Personal Project Scrum Board — Helping your personal projects align with timelines so you feel the responsibility of completing them.">
+  <title>Personal Project Scrum Board</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/index.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/board.css">
+  <link rel="stylesheet" href="css/modals.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+
+  <!-- ════════════════════════════════════
+       LOGIN SCREEN
+       ════════════════════════════════════ -->
+  <div class="login-screen" id="login-screen">
+    <div class="login-card">
+      <div class="login-card__icon">📋</div>
+      <h1 class="login-card__title">Personal Project<br>Scrum Board</h1>
+      <p class="login-card__subtitle">
+        Helping your personal projects align with timelines so you feel the responsibility of completing them — not just starting and leaving for days.
+      </p>
+      <button class="auth-btn" id="btn-google-signin">
+        <svg class="auth-btn__icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        <span class="auth-btn__text">Continue with Google</span>
+      </button>
+      <div class="login-card__footer">
+        Your data is private — only you can see your boards.<br>
+        We only store your name and email for sign-in.
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════
+       APP SHELL
+       ════════════════════════════════════ -->
+  <div class="app hidden" id="app">
+
+    <!-- ── Sidebar ── -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar__brand">
+        <div class="sidebar__brand-icon">📋</div>
+        <span class="sidebar__brand-text">Scrum Board</span>
+      </div>
+
+      <nav class="sidebar__nav">
+        <!-- Home -->
+        <div class="sidebar__home active" id="sidebar-home" onclick="App.navigateHome()">
+          <span class="sidebar__home-icon">🏠</span>
+          <span class="sidebar__home-text">All Projects</span>
+        </div>
+
+        <!-- Projects List -->
+        <div class="sidebar__section">
+          <div class="sidebar__section-header">
+            <span class="sidebar__section-title">Projects</span>
+            <button class="sidebar__section-action" onclick="Modals.openProjectModal()" data-tooltip="New Project">+</button>
+          </div>
+          <div id="sidebar-projects">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- ── Header ── -->
+    <header class="header" id="header">
+      <div class="header__left">
+        <button class="header__toggle" id="btn-toggle-sidebar" data-tooltip="Toggle sidebar">☰</button>
+        <div class="header__breadcrumb" id="header-breadcrumb">
+          <span class="header__breadcrumb-current">Projects</span>
+        </div>
+      </div>
+      <div class="header__right">
+        <div class="header__search">
+          <span class="header__search-icon">🔍</span>
+          <input type="text" class="header__search-input" id="header-search" placeholder="Search items... (press /)">
+        </div>
+        <!-- User Info -->
+        <div class="header__user">
+          <div class="header__user-avatar" id="header-user-avatar"></div>
+          <span class="header__user-name" id="header-user-name"></span>
+          <button class="header__signout" id="btn-signout" data-tooltip="Sign out">↪</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ── Main Content ── -->
+    <main class="main" id="main">
+      <div class="main__content" id="main-content">
+        <!-- Projects view rendered here -->
+        <div class="projects-view" id="projects-view">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- ════════════════════════════════════
+       MODALS
+       ════════════════════════════════════ -->
+
+  <!-- ── Project Modal ── -->
+  <div class="modal-overlay" id="modal-project">
+    <div class="modal">
+      <div class="modal__header">
+        <h2 class="modal__title">
+          <span class="modal__title-icon">🚀</span> New Project
+        </h2>
+        <button class="modal__close" data-close-modal>✕</button>
+      </div>
+      <form id="project-form" class="modal__body">
+        <div class="form-group">
+          <label class="form-label form-label--required" for="project-name">Project Name</label>
+          <input type="text" class="form-input" id="project-name" name="project-name" placeholder="e.g. My Awesome App" autocomplete="off" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="project-desc">Description</label>
+          <textarea class="form-textarea" id="project-desc" name="project-desc" placeholder="What's this project about?" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Color</label>
+          <div class="color-picker">
+            <button type="button" class="color-picker__option selected" data-color="#4a9eff" style="background: #4a9eff"></button>
+            <button type="button" class="color-picker__option" data-color="#a855f7" style="background: #a855f7"></button>
+            <button type="button" class="color-picker__option" data-color="#f43f5e" style="background: #f43f5e"></button>
+            <button type="button" class="color-picker__option" data-color="#22c55e" style="background: #22c55e"></button>
+            <button type="button" class="color-picker__option" data-color="#f59e0b" style="background: #f59e0b"></button>
+            <button type="button" class="color-picker__option" data-color="#ec4899" style="background: #ec4899"></button>
+            <button type="button" class="color-picker__option" data-color="#06b6d4" style="background: #06b6d4"></button>
+            <button type="button" class="color-picker__option" data-color="#8b5cf6" style="background: #8b5cf6"></button>
+            <button type="button" class="color-picker__option" data-color="#14b8a6" style="background: #14b8a6"></button>
+            <button type="button" class="color-picker__option" data-color="#f97316" style="background: #f97316"></button>
+            <button type="button" class="color-picker__option" data-color="#6366f1" style="background: #6366f1"></button>
+            <button type="button" class="color-picker__option" data-color="#84cc16" style="background: #84cc16"></button>
+          </div>
+        </div>
+        <div class="modal__footer">
+          <button type="button" class="btn btn--danger hidden" id="btn-delete-project">🗑️ Delete</button>
+          <div style="flex: 1"></div>
+          <button type="button" class="btn btn--secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn--primary">Save Project</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Work Item Modal ── -->
+  <div class="modal-overlay" id="modal-item">
+    <div class="modal modal--wide">
+      <div class="modal__header">
+        <h2 class="modal__title">
+          <span class="modal__title-icon">➕</span> New Work Item
+        </h2>
+        <button class="modal__close" data-close-modal>✕</button>
+      </div>
+      <form id="item-form">
+        <div class="modal__body">
+          <!-- Type Selector -->
+          <div class="form-group">
+            <label class="form-label">Type</label>
+            <div class="type-selector">
+              <div class="type-selector__option type-selector__option--feature" data-type="feature">
+                <span class="type-selector__option-icon">💎</span>
+                Feature
+              </div>
+              <div class="type-selector__option type-selector__option--bug" data-type="bug">
+                <span class="type-selector__option-icon">🐛</span>
+                Bug
+              </div>
+              <div class="type-selector__option type-selector__option--task selected" data-type="task">
+                <span class="type-selector__option-icon">📋</span>
+                Task
+              </div>
+            </div>
+          </div>
+
+          <!-- Title -->
+          <div class="form-group">
+            <label class="form-label form-label--required" for="item-title">Title</label>
+            <input type="text" class="form-input" id="item-title" name="item-title" placeholder="e.g. Add user authentication" autocomplete="off" required>
+          </div>
+
+          <!-- Description -->
+          <div class="form-group">
+            <label class="form-label" for="item-desc">Description</label>
+            <textarea class="form-textarea" id="item-desc" name="item-desc" placeholder="Describe the work item..." rows="3"></textarea>
+          </div>
+
+          <!-- Priority + Column -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="item-priority">Priority</label>
+              <select class="form-select" id="item-priority" name="item-priority">
+                <option value="critical">🔴 Critical</option>
+                <option value="high">🟠 High</option>
+                <option value="medium" selected>🟡 Medium</option>
+                <option value="low">🟢 Low</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="item-column">Status</label>
+              <select class="form-select" id="item-column" name="item-column">
+                <option value="New">New</option>
+                <option value="Active">Active</option>
+                <option value="Resolved">Resolved</option>
+                <option value="Closed">Closed</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Assignee (Inline) -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="item-assignee-name">Assignee Name</label>
+              <input type="text" class="form-input" id="item-assignee-name" name="item-assignee-name" placeholder="e.g. John Doe" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="item-assignee-email">Assignee Email</label>
+              <input type="email" class="form-input" id="item-assignee-email" name="item-assignee-email" placeholder="e.g. john@example.com" autocomplete="off">
+            </div>
+          </div>
+        </div>
+        <div class="modal__footer modal__footer--split">
+          <button type="button" class="btn btn--danger hidden" id="btn-delete-item">🗑️ Delete</button>
+          <div style="flex: 1"></div>
+          <button type="button" class="btn btn--secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn--primary">Save Item</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Confirm Modal ── -->
+  <div class="modal-overlay" id="modal-confirm">
+    <div class="modal modal--confirm" style="max-width: 400px;">
+      <div class="modal__header">
+        <h2 class="modal__title">Confirm</h2>
+        <button class="modal__close" data-close-modal>✕</button>
+      </div>
+      <div class="modal__body">
+        <div class="modal__body-icon">⚠️</div>
+        <p class="modal__body-text">Are you sure?</p>
+      </div>
+      <div class="modal__footer" style="justify-content: center;">
+        <button type="button" class="btn btn--secondary" id="btn-cancel-confirm">Cancel</button>
+        <button type="button" class="btn btn--danger" id="btn-confirm-action">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Toast Container ── -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- ════════════════════════════════════
+       SCRIPTS
+       ════════════════════════════════════ -->
+
+  <!-- Firebase SDK (compat mode — no build step needed) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <!-- App Scripts -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/modals.js"></script>
+  <script src="js/projects.js"></script>
+  <script src="js/board.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
